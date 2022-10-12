@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	articledto "hallo-corona-be/dto/article"
 	dto "hallo-corona-be/dto/result"
 	"hallo-corona-be/models"
@@ -10,6 +11,10 @@ import (
 	"os"
 	"strconv"
 
+	"context"
+
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
@@ -36,9 +41,9 @@ func (h *handlerArticle) FindArticles(w http.ResponseWriter, r *http.Request) {
 
 
 	// Create Embed Path File on Image property here...
-	for i, p := range articles {
-		articles[i].Image = os.Getenv("PATH_FILE") + p.Image
-	  }
+	// for i, p := range articles {
+	// 	articles[i].Image = os.Getenv("PATH_FILE") + p.Image
+	//   }
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: articles}
@@ -60,7 +65,7 @@ func (h *handlerArticle) GetArticle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create Embed Path File on Image property here ...
-	article.Image = os.Getenv("PATH_FILE") + article.Image
+	// article.Image = os.Getenv("PATH_FILE") + article.Image
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseArticle(article)}
@@ -76,7 +81,7 @@ func (h *handlerArticle) CreateArticle(w http.ResponseWriter, r *http.Request) {
 
 	// Get dataFile from midleware and store to filename variable here ...
 	dataContex := r.Context().Value("dataFile") 
-	filename := dataContex.(string) 
+	filepath := dataContex.(string) 
 
 
 	request := articledto.CreateArticleRequest{
@@ -95,9 +100,24 @@ func (h *handlerArticle) CreateArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ctx = context.Background()
+var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+var API_KEY = os.Getenv("API_KEY")
+var API_SECRET = os.Getenv("API_SECRET")
+
+// Add your Cloudinary credentials ...
+cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+// Upload file to Cloudinary ...
+resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dumbmerch"});
+
+if err != nil {
+  fmt.Println(err.Error())
+}
+
 	article := models.Article{
 		Title:   request.Title,
-		Image:  filename,
+		Image:  resp.SecureURL, 
 		UserID:    userId,
 		User:      models.UserResponse{},
 		Desc:   request.Desc,
